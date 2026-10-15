@@ -346,7 +346,7 @@
           appendMessage(match.answer, false, match.source, idx === matches.length - 1 ? related : []);
         });
       } else {
-        const fallbackText = "That isn't covered in our Experience Day FAQ doc!\n\nPlease email campusrecruiting@pmg.com or reach out to your recruiter directly, and our team will be happy to assist you.";
+        const fallbackText = "I'm not sure about that! Please email campusrecruiting@pmg.com, send a message in the GroupMe channel, or reach out to your recruiter directly so we can assist you!";
         appendMessage(fallbackText, false, 'GLP Experience Day FAQ • Candidate Support');
       }
     }, 250);
