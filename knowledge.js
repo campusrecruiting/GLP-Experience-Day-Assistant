@@ -41,7 +41,7 @@ var FAQ_DATA = [
       "Is hotel covered for the weekend?"
     ],
     question: "Do I need to book a hotel?",
-    answer: "Nope! We have a hotel room block reserved, and our recruiting team will automatically place your reservation.\n\n• **Location**: The hotel is very close to the PMG Dallas office. We will share the exact hotel address the week of your Experience Day.\n• **Thursday Night Covered**: The room block covers Thursday night with checkout on Friday morning.\n• **Luggage Storage**: You can bring your luggage directly to the office Friday morning. We have a secure designated area to store your bags throughout your interview day.\n• **Local Candidates**: Candidates living in the DFW area are also welcome to stay at the hotel Thursday night to avoid Friday morning rush hour traffic!\n• **Weekend Stays**: If you choose to extend your trip through Sunday, you will need to arrange and cover your own hotel for Friday and Saturday.",
+    answer: "We have a hotel room block reserved, and our recruiting team will automatically add your name to it.\n\n• **Location**: The hotel is very close to the PMG Dallas office. We will share the exact hotel address the week of your Experience Day.\n• **Thursday Night Covered**: The room block covers Thursday night with checkout on Friday morning.\n• **Luggage Storage**: You can bring your luggage directly to the office Friday morning. We have a secure designated area to store your bags throughout your interview day.\n• **Local Candidates**: Candidates living in the DFW area are also welcome to stay at the hotel Thursday night to avoid Friday morning traffic!\n• **Weekend Stays**: If you choose to extend your trip through Sunday, you will need to arrange and cover your own hotel for Friday and Saturday.",
     source: "GLP Experience Day FAQ • Question 2 (Hotel & Lodging)"
   },
   {
@@ -113,7 +113,7 @@ var FAQ_DATA = [
       "What meals are covered?"
     ],
     question: "Are there any costs associated with Experience Day?",
-    answer: "Nope! **All approved costs are 100% covered by PMG.**\n\n• **Flights**: When booking through Navan, a PMG corporate card is pre-attached—no personal credit card required.\n• **Ground Travel**: Covered via your 7-ride Uber voucher or Ramp reimbursement for driving mileage/gas.\n• **Meals**: Breakfast and lunch are fully catered at the PMG office on Friday. Thursday evening dinner is on your own, but covered via your Uber travel voucher.",
+    answer: "All costs are covered by PMG and we’re excited to welcome you to our office!\n\n• **Flights**: When booking through Navan, a PMG corporate card is already attached—no personal payment needed after selecting your flights.\n• **Ground Travel**: Covered via your 7-ride Uber voucher or Ramp reimbursement for driving mileage/gas.\n• **Meals**: Breakfast and lunch will be catered on Friday, so no need to worry about food costs either. Thursday night dinner is on your own, with a Visa gift card provided to cover the cost!",
     source: "GLP Experience Day FAQ • Question 6 (Expenses & Costs)"
   },
   {
@@ -204,7 +204,7 @@ var FAQ_DATA = [
       "Where is the Experience Day GroupMe?"
     ],
     question: "What is the best way to communicate with the recruiting team if I have a question?",
-    answer: "You can reach our team anytime through either channel:\n\n• **Email**: campusrecruiting@pmg.com\n• **GroupMe**: Send a message in your official **Experience Day GroupMe channel** for real-time travel updates, arrival notices, or urgent day-of questions.\n\nWe monitor both continuously and are excited to assist you!",
+    answer: "You can reach our team anytime through either channel:\n\n• **Email**: Feel free to email our inbox at campusrecruiting@pmg.com.\n• **GroupMe**: Send a message in your official Experience Day GroupMe channel for any urgent day-of or travel requests.\n• **GroupMe Access**: You will be added to your specific GroupMe the week of your Experience Day!\n\nWe’re happy to help and can't wait to meet you!",
     source: "GLP Experience Day FAQ • Question 11 (Communication)"
   },
   {
@@ -222,8 +222,46 @@ var FAQ_DATA = [
       "What if I have an exploding or competing offer deadline?"
     ],
     question: "How soon will I hear back after Experience Day?",
-    answer: "Our **CEO and Chief People Officer** review all candidate feedback directly following Experience Day.\n\n• **General Timing**: We aim to communicate final hiring decisions by **mid-November** for all candidates interviewing during fall Experience Days.\n• **Competing Offers**: If you receive a competing job offer with an approaching deadline, email us immediately at campusrecruiting@pmg.com so our team can expedite your evaluation wherever possible!",
+    answer: "Our **CEO and Chief People Officer** will review feedback from all candidates who attend Experience Day.\n\n• **General Timing**: We are hoping to make final decisions by **mid-November** for all candidates who interview this fall.\n• **Competing Offers**: Please notify our recruiting team at campusrecruiting@pmg.com if you have any competing offers so we can try to expedite the decision-making process where we can!",
     source: "GLP Experience Day FAQ • Question 12 (Decisions & Offers)"
+  },
+  {
+    id: "food",
+    topics: [
+      "food", "food provided", "meals", "meal", "breakfast", "lunch", "dinner",
+      "eat", "eating", "catering", "catered", "dietary", "restrictions", "allergies",
+      "allergy", "vegan", "vegetarian", "gluten", "visa gift card", "gift card", "thursday night dinner"
+    ],
+    shortTitle: "Food & Meals",
+    relatedIds: ["costs", "schedule", "preparation"],
+    sampleQuestions: [
+      "Will food be provided?",
+      "What meals are provided during Experience Day?",
+      "How is Thursday night dinner handled?",
+      "How do I let you know about dietary restrictions?"
+    ],
+    question: "Will food be provided?",
+    answer: "Yes, food is provided throughout your visit!\n\n• **Friday Breakfast & Lunch**: Breakfast and lunch will be catered into the office on Friday for all candidates.\n• **Thursday Night Dinner**: Thursday night dinner is on your own, but we’ll provide a **Visa gift card** to cover the cost, and you can use your **Uber voucher** to get to and from the hotel!\n• **Dietary Restrictions**: If you have dietary restrictions, please indicate that on your candidate survey and we’ll be sure to accommodate that in the catering order!",
+    source: "GLP Experience Day FAQ • Question 13 (Food & Catering)"
+  },
+  {
+    id: "address",
+    topics: [
+      "address", "office address", "location", "office location", "where is pmg", "where is the office",
+      "building", "dallas office", "olive st", "olive street", "floor", "19th floor", "floor 19",
+      "directions", "find the office", "gps"
+    ],
+    shortTitle: "Office Address",
+    relatedIds: ["driving", "transportation", "hotel"],
+    sampleQuestions: [
+      "What is the office address?",
+      "Where is the PMG Dallas office located?",
+      "What floor is PMG on in Dallas?",
+      "What address should I give to my Uber?"
+    ],
+    question: "What is the office address?",
+    answer: "The PMG Dallas Office is located at:\n\n**2601 Olive St.**\n**Floor 19**\n**Dallas, TX 75201**\n\n*(Note: If you are driving and parking, it is easiest to enter 'Happiest Hour' into GPS to arrive directly at the parking garage entrance on the right side of the building).*",
+    source: "GLP Experience Day FAQ • Question 14 (Office Address)"
   }
 ];
 

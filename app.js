@@ -47,7 +47,8 @@
     'food': ['meals', 'meal', 'lunch', 'breakfast', 'dinner', 'catered', 'catering', 'dietary', 'allergies', 'eat'],
     'laptop': ['computer', 'mac', 'pc', 'charger', 'loaner', 'borrow'],
     'survey': ['form', 'slides', 'presentation', 'behavioral', 'intro'],
-    'offers': ['decision', 'decisions', 'hear', 'offer', 'timeline', 'results', 'hire']
+    'offers': ['decision', 'decisions', 'hear', 'offer', 'timeline', 'results', 'hire'],
+    'address': ['location', 'directions', 'building', 'office', 'olive', 'where is pmg', 'where is the office']
   };
 
   function normalizeText(text) {
