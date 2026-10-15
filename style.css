@@ -3,3 +3,7 @@
 
 /* PMG brand treatment */
 .pmg-logo{display:block;width:104px;height:46px;object-fit:contain;object-position:left center}.brand-fallback{font:800 39px Manrope,Arial,sans-serif;letter-spacing:-2px}.brand{display:flex;align-items:center;min-width:104px}header{border-top:5px solid #2ea6b5}.header-label{color:#346d73}.eyebrow{color:#296b73}.eyebrow span{background:#2ea6b5}h1{font-weight:800}.orb{display:grid;place-items:center;font:400 126px/1 Arial,sans-serif;background:#2ea6b5;color:#211f17;width:145px;height:145px;border-radius:28px;left:70px;top:5px;transform:rotate(-10deg)}.orbit{z-index:1;pointer-events:none;border-color:#211f17;opacity:.45}.bot-avatar{font:800 12px Manrope,Arial,sans-serif;letter-spacing:-.7px;background:#2ea6b5;color:#211f17;border-radius:10px}.input-wrap button{background:#211f17}.suggestions button:hover{border-color:#2ea6b5}.contact:hover,.source:hover{color:#187a87}.chat-panel{border-top:4px solid #2ea6b5}
+
+.inline-chip{transition:all .15s ease}
+.inline-chip:hover{background:var(--lavender)!important;border-color:#2ea6b5!important;color:#187a87!important}
+

@@ -1,4 +1,4 @@
-// PMG Experience Day Assistant — Client-Side Application Logic
+// PMG Experience Day Assistant — Intelligent Client-Side Application Logic
 
 (function () {
   'use strict';
@@ -16,7 +16,7 @@
     </div>
   `;
 
-  // Stop words to ignore during query tokenization
+  // Common stop words to exclude from score weighting
   const STOP_WORDS = new Set([
     'a', 'about', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'can', 'could',
     'do', 'does', 'for', 'from', 'get', 'had', 'has', 'have', 'how', 'i',
@@ -25,6 +25,23 @@
     'to', 'us', 'was', 'we', 'what', 'when', 'where', 'which', 'who', 'will',
     'with', 'would', 'you', 'your'
   ]);
+
+  // Conversational Intent Synonyms
+  const GREETING_TOKENS = new Set(['hi', 'hello', 'hey', 'howdy', 'greetings', 'morning', 'afternoon']);
+  const THANKS_TOKENS = new Set(['thanks', 'thank', 'appreciate', 'helpful', 'awesome', 'great', 'cool']);
+
+  // Domain Synonym Expansion
+  const SYNONYMS = {
+    'flight': ['flights', 'plane', 'airplane', 'airline', 'airfare', 'navan', 'dfw', 'dal', 'love field', 'airport', 'fly'],
+    'hotel': ['lodging', 'room', 'accommodations', 'stay', 'checkout', 'sleep', 'night'],
+    'clothes': ['clothing', 'dress', 'wear', 'outfit', 'attire', 'shoes', 'suit', 'tie', 'casual', 'jacket', 'sweater'],
+    'schedule': ['agenda', 'timing', 'time', 'hours', 'start', 'end', 'conclude', 'finish', 'timeline'],
+    'driving': ['drive', 'car', 'parking', 'park', 'garage', 'mileage', 'gas', 'reimbursement', 'ramp'],
+    'food': ['meals', 'meal', 'lunch', 'breakfast', 'dinner', 'catered', 'catering', 'dietary', 'allergies', 'eat'],
+    'laptop': ['computer', 'mac', 'pc', 'charger', 'loaner', 'borrow'],
+    'survey': ['form', 'slides', 'presentation', 'behavioral', 'intro'],
+    'offers': ['decision', 'decisions', 'hear', 'offer', 'timeline', 'results', 'hire']
+  };
 
   function normalizeText(text) {
     return (text || '')
@@ -41,107 +58,193 @@
       .filter(t => t.length > 1 && !STOP_WORDS.has(t));
   }
 
-  // Find best matching FAQ item
-  function findAnswer(query) {
+  // Expand query tokens using domain synonyms
+  function expandTokens(tokens) {
+    const expanded = new Set(tokens);
+    for (const token of tokens) {
+      for (const [key, synList] of Object.entries(SYNONYMS)) {
+        if (key === token || synList.includes(token)) {
+          expanded.add(key);
+          synList.forEach(s => expanded.add(s));
+        }
+      }
+    }
+    return Array.from(expanded);
+  }
+
+  // Levenshtein distance for typo tolerance
+  function levenshteinDistance(a, b) {
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  }
+
+  function isFuzzyMatch(word1, word2) {
+    if (word1 === word2) return true;
+    if (word1.length > 4 && word2.length > 4) {
+      return levenshteinDistance(word1, word2) <= 1;
+    }
+    return false;
+  }
+
+  function scoreFAQ(item, cleanQuery, tokens, expanded) {
+    let score = 0;
+    const cleanQuestion = normalizeText(item.question);
+    const cleanAnswer = normalizeText(item.answer);
+    const cleanTitle = normalizeText(item.shortTitle);
+
+    // Exact phrase in question or title
+    if (cleanQuestion.includes(cleanQuery)) score += 60;
+    if (cleanTitle.includes(cleanQuery)) score += 40;
+
+    // Direct topic or ID matches
+    if (item.id === cleanQuery) score += 70;
+    if (item.topics.some(t => t === cleanQuery)) score += 50;
+
+    // Check sample questions
+    if (item.sampleQuestions) {
+      for (const sq of item.sampleQuestions) {
+        const cleanSq = normalizeText(sq);
+        if (cleanSq.includes(cleanQuery) || cleanQuery.includes(cleanSq)) {
+          score += 45;
+        }
+      }
+    }
+
+    // Token & expanded synonym matching
+    for (const token of tokens) {
+      if (item.topics.some(t => t === token || isFuzzyMatch(t, token))) {
+        score += 18;
+      }
+      if (cleanTitle.includes(token)) score += 12;
+      if (cleanQuestion.includes(token)) score += 10;
+      if (cleanAnswer.includes(token)) score += 2;
+    }
+
+    // Extra weight for expanded domain synonyms
+    for (const exp of expanded) {
+      if (item.topics.includes(exp)) score += 6;
+    }
+
+    return score;
+  }
+
+  // Intelligent matching engine supporting compound questions
+  function findAnswers(query, topicKey = null) {
     const data = (typeof window !== 'undefined' && window.FAQ_DATA) || (typeof FAQ_DATA !== 'undefined' ? FAQ_DATA : []);
-    if (!Array.isArray(data) || data.length === 0) {
-      return null;
+    if (!Array.isArray(data) || data.length === 0) return { matches: [], intent: 'none' };
+
+    // Direct topic lookup (from button click)
+    if (topicKey) {
+      const direct = data.find(item => item.id === topicKey);
+      if (direct) return { matches: [direct], intent: 'faq' };
     }
 
     const cleanQuery = normalizeText(query);
     const tokens = getTokens(query);
 
-    // Topic direct match (e.g. from suggestion buttons or exact keyword)
-    for (const item of data) {
-      if (item.id === query.toLowerCase() || item.topics.includes(query.toLowerCase()) || cleanQuery === item.id) {
-        return item;
-      }
+    // Detect Greeting Intent
+    if (tokens.length <= 3 && tokens.some(t => GREETING_TOKENS.has(t))) {
+      return { matches: [], intent: 'greeting' };
     }
 
-    let bestItem = null;
-    let highestScore = 0;
-
-    for (const item of data) {
-      let score = 0;
-      const cleanQuestion = normalizeText(item.question);
-      const cleanAnswer = normalizeText(item.answer);
-      const cleanTitle = normalizeText(item.shortTitle);
-
-      // 1. Exact phrase boost
-      if (cleanQuestion.includes(cleanQuery) || cleanQuery.includes(item.id)) {
-        score += 50;
-      }
-
-      // 2. Query token matching
-      for (const token of tokens) {
-        // Direct topic match
-        if (item.topics.some(t => t === token || t.includes(token))) {
-          score += 15;
-        }
-        // Short title match
-        if (cleanTitle.includes(token)) {
-          score += 12;
-        }
-        // Question title match
-        if (cleanQuestion.includes(token)) {
-          score += 8;
-        }
-        // Answer body match
-        if (cleanAnswer.includes(token)) {
-          score += 2;
-        }
-      }
-
-      if (score > highestScore) {
-        highestScore = score;
-        bestItem = item;
-      }
+    // Detect Thank You Intent
+    if (tokens.length <= 4 && tokens.some(t => THANKS_TOKENS.has(t))) {
+      return { matches: [], intent: 'thanks' };
     }
 
-    // Require a minimum match threshold
-    if (highestScore >= 8) {
-      return bestItem;
+    const expanded = expandTokens(tokens);
+
+    // Score all items
+    const scored = data.map(item => ({
+      item,
+      score: scoreFAQ(item, cleanQuery, tokens, expanded)
+    }));
+
+    // Sort descending by score
+    scored.sort((a, b) => b.score - a.score);
+
+    const top = scored[0];
+    if (!top || top.score < 12) {
+      return { matches: [], intent: 'unknown' };
     }
 
-    return null;
+    // Check if query is compound (e.g. "what should I wear AND what is the schedule?")
+    const matches = [top.item];
+    const second = scored[1];
+    const hasAnd = query.toLowerCase().includes(' and ') || query.includes('&') || query.includes(' also ');
+
+    if (hasAnd && second && second.score >= 20 && (top.score - second.score) < 30) {
+      matches.push(second.item);
+    }
+
+    return { matches, intent: 'faq' };
   }
 
-  // Format text with markdown links and line breaks
-  function formatResponse(text, source) {
-    // Escape HTML first
-    let escaped = text
+  // Format response with markdown bolding, bullets, and emails
+  function formatResponse(text, source, relatedItems = []) {
+    let html = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
+    // Markdown bold: **text**
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
     // Linkify email addresses
-    escaped = escaped.replace(
+    html = html.replace(
       /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
       '<a href="mailto:$1">$1</a>'
     );
 
-    // Format bullet points and newlines
-    const lines = escaped.split('\n');
-    let html = '';
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (line.startsWith('• ') || line.startsWith('- ')) {
-        html += `<div style="padding-left:12px;margin:3px 0;">${line}</div>`;
-      } else if (line.trim() === '') {
-        html += '<div style="height:8px;"></div>';
+    // Format bullet points and paragraphs
+    const lines = html.split('\n');
+    let formatted = '';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('• ') || trimmed.startsWith('- ')) {
+        formatted += `<div style="padding-left:14px;margin:5px 0;">${trimmed}</div>`;
+      } else if (trimmed === '') {
+        formatted += '<div style="height:10px;"></div>';
       } else {
-        html += `<div>${line}</div>`;
+        formatted += `<div>${trimmed}</div>`;
       }
     }
 
     if (source) {
-      html += `<div class="answer-source">${source}</div>`;
+      formatted += `<div class="answer-source">${source}</div>`;
     }
 
-    return html;
+    // Add related topic chips if available
+    if (relatedItems && relatedItems.length > 0) {
+      formatted += '<div style="margin-top:14px;padding-top:10px;border-top:1px solid #d4e5e2;font-size:11px;color:#496d67;"><strong>Related questions:</strong><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;">';
+      for (const rel of relatedItems) {
+        formatted += `<button class="inline-chip" data-topic="${rel.id}" style="font:500 11px 'DM Sans',Arial,sans-serif;background:#fff;border:1px solid #9dc4bf;border-radius:14px;padding:4px 9px;color:#1d6670;cursor:pointer;">${rel.shortTitle} ↗</button>`;
+      }
+      formatted += '</div></div>';
+    }
+
+    return formatted;
   }
 
-  function appendMessage(text, isUser = false, source = null) {
+  function appendMessage(text, isUser = false, source = null, relatedItems = []) {
     const messageEl = document.createElement('div');
     messageEl.className = `message ${isUser ? 'user' : 'bot'}`;
 
@@ -155,14 +258,14 @@
     if (isUser) {
       bubbleEl.textContent = text;
     } else {
-      bubbleEl.innerHTML = formatResponse(text, source);
+      bubbleEl.innerHTML = formatResponse(text, source, relatedItems);
     }
 
     messageEl.appendChild(tagEl);
     messageEl.appendChild(bubbleEl);
     messagesContainer.appendChild(messageEl);
 
-    // Scroll smoothly to bottom
+    // Smooth scroll to latest
     messagesContainer.scrollTo({
       top: messagesContainer.scrollHeight,
       behavior: 'smooth'
@@ -173,21 +276,40 @@
     const trimmed = userText.trim();
     if (!trimmed) return;
 
-    // Append user bubble
     appendMessage(trimmed, true);
 
-    // Find answer (check topicKey first if provided)
-    const match = (topicKey && findAnswer(topicKey)) || findAnswer(trimmed);
+    const { matches, intent } = findAnswers(trimmed, topicKey);
 
-    // Small simulated delay for natural conversational feel
     setTimeout(() => {
-      if (match) {
-        appendMessage(match.answer, false, match.source);
+      if (intent === 'greeting') {
+        appendMessage(
+          "Hello! Great to connect with you. I'm here to answer any questions about PMG Experience Day—including travel, hotel reservations, the dress code, parking, and our schedule!\n\nWhat would you like to know?",
+          false,
+          'GLP Experience Day FAQ • Welcome'
+        );
+      } else if (intent === 'thanks') {
+        appendMessage(
+          "You're very welcome! We are so excited to host you at PMG. If you think of anything else before Experience Day, don't hesitate to ask or reach out to campusrecruiting@pmg.com.",
+          false,
+          'GLP Experience Day FAQ • Candidate Support'
+        );
+      } else if (matches.length > 0) {
+        const allData = window.FAQ_DATA || [];
+        
+        matches.forEach((match, idx) => {
+          // Resolve related items
+          const related = (match.relatedIds || [])
+            .map(id => allData.find(d => d.id === id))
+            .filter(Boolean)
+            .slice(0, 3);
+
+          appendMessage(match.answer, false, match.source, idx === matches.length - 1 ? related : []);
+        });
       } else {
-        const fallbackText = "I don't have exact details on that specific question yet! I specialize in Experience Day logistics like booking flights, hotel arrangements, dress code, parking/driving, and the schedule.\n\nFor personal arrangements or questions about your interview status, feel free to reach out to our team at campusrecruiting@pmg.com.";
+        const fallbackText = "I don't have exact details on that specific question yet! I specialize in Experience Day logistics like booking flights, hotel arrangements, dress code, parking/driving, meals, and the interview schedule.\n\nFor personal accommodations or questions regarding your individual application, feel free to email our recruiting team directly at campusrecruiting@pmg.com.";
         appendMessage(fallbackText, false, 'GLP Experience Day FAQ • Candidate Support');
       }
-    }, 280);
+    }, 250);
   }
 
   // Handle form submission
@@ -200,7 +322,7 @@
       handleQuestion(text);
     });
 
-    // Auto-grow textarea & Enter key submission (Shift+Enter for newline)
+    // Enter key submits (Shift+Enter for newline)
     questionInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -214,18 +336,16 @@
     });
   }
 
-  // Handle suggestion topic pills
-  if (suggestionsContainer) {
-    suggestionsContainer.addEventListener('click', function (e) {
-      const button = e.target.closest('button[data-topic]');
-      if (!button) return;
-      const topic = button.getAttribute('data-topic');
-      const label = button.textContent.replace(/^[^\w\s]+/, '').trim();
-      handleQuestion(label, topic);
-    });
-  }
+  // Handle suggestion pills & dynamic related question chips
+  document.addEventListener('click', function (e) {
+    const button = e.target.closest('button[data-topic]');
+    if (!button) return;
+    const topic = button.getAttribute('data-topic');
+    const label = button.textContent.replace(/[↗✈⌂✧◷]+/g, '').trim();
+    handleQuestion(label, topic);
+  });
 
-  // Reset chat
+  // Reset conversation
   if (resetButton) {
     resetButton.addEventListener('click', function () {
       messagesContainer.innerHTML = INITIAL_MESSAGE_HTML;
