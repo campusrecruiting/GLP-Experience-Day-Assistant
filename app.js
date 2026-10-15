@@ -23,7 +23,14 @@
     'if', 'in', 'is', 'it', 'me', 'my', 'no', 'not', 'of', 'on', 'or', 'our',
     'please', 'should', 'so', 'that', 'the', 'their', 'there', 'they', 'this',
     'to', 'us', 'was', 'we', 'what', 'when', 'where', 'which', 'who', 'will',
-    'with', 'would', 'you', 'your'
+    'with', 'would', 'you', 'your', 'experience', 'day', 'pmg'
+  ]);
+
+  // Generic verbs that should not trigger false positive matches on their own
+  const GENERIC_VERBS = new Set([
+    'bring', 'bringing', 'take', 'taking', 'need', 'needed', 'get', 'getting',
+    'stay', 'staying', 'come', 'coming', 'go', 'going', 'have', 'having',
+    'use', 'using', 'know', 'make', 'give', 'ask', 'tell', 'want'
   ]);
 
   // Conversational Intent Synonyms
@@ -56,6 +63,19 @@
     return normalized
       .split(' ')
       .filter(t => t.length > 1 && !STOP_WORDS.has(t));
+  }
+
+  // Build corpus vocabulary set from all FAQ content
+  function getCorpusVocabulary(data) {
+    const vocab = new Set();
+    for (const item of data) {
+      const allText = `${item.id} ${item.shortTitle} ${item.question} ${item.answer} ${(item.topics || []).join(' ')} ${(item.sampleQuestions || []).join(' ')}`;
+      const words = normalizeText(allText).split(' ');
+      for (const w of words) {
+        if (w.length > 2) vocab.add(w);
+      }
+    }
+    return vocab;
   }
 
   // Expand query tokens using domain synonyms
@@ -130,17 +150,22 @@
 
     // Token & expanded synonym matching
     for (const token of tokens) {
+      const isGeneric = GENERIC_VERBS.has(token);
+      const weightMultiplier = isGeneric ? 0.35 : 1.0;
+
       if (item.topics.some(t => t === token || isFuzzyMatch(t, token))) {
-        score += 18;
+        score += 20 * weightMultiplier;
       }
-      if (cleanTitle.includes(token)) score += 12;
-      if (cleanQuestion.includes(token)) score += 10;
-      if (cleanAnswer.includes(token)) score += 2;
+      if (cleanTitle.includes(token)) score += 14 * weightMultiplier;
+      if (cleanQuestion.includes(token)) score += 10 * weightMultiplier;
+      if (cleanAnswer.includes(token)) score += 2 * weightMultiplier;
     }
 
     // Extra weight for expanded domain synonyms
     for (const exp of expanded) {
-      if (item.topics.includes(exp)) score += 6;
+      if (!GENERIC_VERBS.has(exp) && item.topics.includes(exp)) {
+        score += 8;
+      }
     }
 
     return score;
@@ -170,6 +195,16 @@
       return { matches: [], intent: 'thanks' };
     }
 
+    if (tokens.length === 0) {
+      return { matches: [], intent: 'unknown' };
+    }
+
+    // Check for substantive out-of-domain terms
+    const vocab = getCorpusVocabulary(data);
+    const unknownSpecificTokens = tokens.filter(
+      t => !GENERIC_VERBS.has(t) && !vocab.has(t) && !Array.from(vocab).some(v => isFuzzyMatch(v, t))
+    );
+
     const expanded = expandTokens(tokens);
 
     // Score all items
@@ -182,7 +217,12 @@
     scored.sort((a, b) => b.score - a.score);
 
     const top = scored[0];
-    if (!top || top.score < 12) {
+
+    // If query has unknown specific subjects (e.g. dog, pet, salary, roommate)
+    // require an unambiguous, high-scoring specific subject match
+    const minThreshold = unknownSpecificTokens.length > 0 ? 32 : 16;
+
+    if (!top || top.score < minThreshold) {
       return { matches: [], intent: 'unknown' };
     }
 
@@ -191,7 +231,7 @@
     const second = scored[1];
     const hasAnd = query.toLowerCase().includes(' and ') || query.includes('&') || query.includes(' also ');
 
-    if (hasAnd && second && second.score >= 20 && (top.score - second.score) < 30) {
+    if (hasAnd && second && second.score >= 22 && (top.score - second.score) < 30) {
       matches.push(second.item);
     }
 
@@ -306,7 +346,7 @@
           appendMessage(match.answer, false, match.source, idx === matches.length - 1 ? related : []);
         });
       } else {
-        const fallbackText = "I don't have exact details on that specific question yet! I specialize in Experience Day logistics like booking flights, hotel arrangements, dress code, parking/driving, meals, and the interview schedule.\n\nFor personal accommodations or questions regarding your individual application, feel free to email our recruiting team directly at campusrecruiting@pmg.com.";
+        const fallbackText = "That isn't covered in our Experience Day FAQ doc!\n\nPlease email campusrecruiting@pmg.com or reach out to your recruiter directly, and our team will be happy to assist you.";
         appendMessage(fallbackText, false, 'GLP Experience Day FAQ • Candidate Support');
       }
     }, 250);
